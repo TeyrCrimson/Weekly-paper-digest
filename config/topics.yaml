@@ -1,0 +1,18 @@
+topics:
+  - name: "DDS interoperability in ROS 2"
+    description: >
+      Cross-vendor DDS (CycloneDDS/FastDDS) interop, QoS matching,
+      discovery over constrained networks.
+  - name: "Delay-compensated perception for mobile robots"
+    description: >
+      State estimation and control under sensing latency; delayed
+      measurement fusion, Kalman rewind/replay.
+
+arxiv_categories: [cs.RO, eess.SY, cs.LG]
+lookback_days: 7
+max_candidates: 200
+top_n: 10
+min_relevance_score: 6
+
+ranking_model: haiku
+analysis_model: sonnet

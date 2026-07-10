@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>ArXiv Query: search_query=cat:cs.RO</title>
+  <totalResults xmlns="http://a9.com/-/spec/opensearch/1.1/">2</totalResults>
+  <entry>
+    <id>http://arxiv.org/abs/2507.01234v1</id>
+    <published>2026-07-08T12:34:56Z</published>
+    <updated>2026-07-08T12:34:56Z</updated>
+    <title>Cross-Vendor DDS Discovery
+   for ROS 2 over Lossy Links</title>
+    <summary>We study discovery traffic between CycloneDDS and FastDDS
+   participants under constrained networks and propose a QoS matching scheme.</summary>
+    <author><name>Alice Example</name></author>
+    <author><name>Bob Sample</name></author>
+    <category term="cs.RO" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.NI" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2507.05678v2</id>
+    <published>2026-07-06T01:02:03Z</published>
+    <updated>2026-07-07T01:02:03Z</updated>
+    <title>Delayed Measurement Fusion with Kalman Rewind</title>
+    <summary>A state estimator that replays buffered measurements to
+   compensate sensing latency on mobile robots.</summary>
+    <author><name>Carol Test</name></author>
+    <category term="eess.SY" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+</feed>

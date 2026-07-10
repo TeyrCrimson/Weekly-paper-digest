@@ -1,0 +1,45 @@
+name: weekly-digest
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC; cron can drift — lookback_days absorbs it
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the digest pipeline
+        env:
+          # Subscription OAuth token from `claude setup-token`.
+          # Never set ANTHROPIC_API_KEY here — it would silently switch
+          # billing to per-token API rates.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python -m paperdigest.main --config config/topics.yaml
+
+      - name: Commit digests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add digests/
+          git diff --cached --quiet || git commit -m "Weekly digest $(date -u +%F)"
+          git push
