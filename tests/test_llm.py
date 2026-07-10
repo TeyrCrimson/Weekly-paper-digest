@@ -26,7 +26,7 @@ def _patch_run(monkeypatch, procs):
     calls = []
 
     def fake_run(cmd, **kwargs):
-        calls.append(cmd)
+        calls.append((cmd, kwargs))
         return next(it)
 
     monkeypatch.setattr(llm.subprocess, "run", fake_run)
@@ -42,8 +42,10 @@ def test_good_envelope(monkeypatch):
     assert llm.USAGE_LOG == [
         {"model": "haiku", "input_tokens": 100, "output_tokens": 20, "cost_usd": 0.001}
     ]
-    cmd = calls[0]
-    assert cmd[:3] == ["claude", "-p", "prompt"]
+    cmd, kwargs = calls[0]
+    assert cmd[:2] == ["claude", "-p"]
+    assert "prompt" not in cmd  # prompt travels via stdin, never argv (E2BIG)
+    assert kwargs["input"] == "prompt"
     assert "--output-format" in cmd and "json" in cmd
 
 

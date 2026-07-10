@@ -42,13 +42,16 @@ def complete(prompt: str, system: str, model: str) -> LLMResult:
 
 
 def _call(prompt: str, system: str, model: str) -> LLMResult:
+    # Prompt goes on stdin, not argv: paper batches exceed the kernel's
+    # per-argument size limit (E2BIG).
     cmd = [
-        "claude", "-p", prompt,
+        "claude", "-p",
         "--system-prompt", system,
         "--model", model,
         "--output-format", "json",
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_S)
+    proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
+                          timeout=TIMEOUT_S)
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd[0], proc.stdout, proc.stderr)
     envelope = json.loads(proc.stdout)
