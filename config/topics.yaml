@@ -1,17 +1,31 @@
 topics:
-  - name: "DDS interoperability in ROS 2"
+  # - name: "DDS interoperability in ROS 2"
+  #  description: >
+  #    Cross-vendor DDS (CycloneDDS/FastDDS) interop, QoS matching,
+  #    discovery over constrained networks.
+  #- name: "Delay-compensated perception for mobile robots"
+  #  description: >
+  #    State estimation and control under sensing latency; delayed
+  #    measurement fusion, Kalman rewind/replay
+  - name: "Pre-inference input sanitization for generation stability"
     description: >
-      Cross-vendor DDS (CycloneDDS/FastDDS) interop, QoS matching,
-      discovery over constrained networks.
-  - name: "Delay-compensated perception for mobile robots"
-    description: >
-      State estimation and control under sensing latency; delayed
-      measurement fusion, Kalman rewind/replay.
+      Prompt and context preprocessing that prevents degenerate
+      generation: near-duplicate context collapse, input
+      normalization, context-length and KV-cache hygiene,
+      constrained or grammar-based decoding setup, and adversarial
+      prompts that deliberately induce repetition loops.
 
-arxiv_categories: [cs.RO, eess.SY, cs.LG]
+  - name: "Post-inference detection and repair of degenerate output"
+    description: >
+      Detecting and recovering from repetition loops during or after
+      decoding: n-gram and rolling-hash loop detectors, compression
+      ratio and type-token-ratio collapse metrics, scheduler-level
+      early stopping, truncation and resampling repair policies.
+
+arxiv_categories: [cs.RO, eess.SY, cs.LG, cs.CL]
 lookback_days: 7
 max_candidates: 200
-top_n: 10
+top_n: 12
 min_relevance_score: 6
 
 ranking_model: haiku
