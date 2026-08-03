@@ -37,6 +37,13 @@ def fetch_papers(cfg: Config) -> list[Paper]:
             papers.append(p)
         if len(page) < count:
             break
+    else:
+        # Exhausted max_candidates without reaching the cutoff: the lookback
+        # window is silently truncated and older papers were never seen.
+        log.warning("hit max_candidates=%d before the %d-day cutoff — oldest fetched "
+                    "is %s; raise max_candidates or narrow arxiv_categories",
+                    cfg.max_candidates, cfg.lookback_days,
+                    papers[-1].published.date() if papers else "n/a")
     log.info("fetched %d papers", len(papers))
     return papers
 

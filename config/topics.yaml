@@ -11,9 +11,11 @@ topics:
     description: >
       Prompt and context preprocessing that prevents degenerate
       generation: near-duplicate context collapse, input
-      normalization, context-length and KV-cache hygiene,
-      constrained or grammar-based decoding setup, and adversarial
-      prompts that deliberately induce repetition loops.
+      normalization, constrained or grammar-based decoding setup,
+      and adversarial prompts that deliberately induce repetition
+      loops. NOT general inference-efficiency work — cache
+      compression and serving throughput belong to the inference
+      efficiency topic below.
 
   - name: "Post-inference detection and repair of degenerate output"
     description: >
@@ -22,9 +24,19 @@ topics:
       ratio and type-token-ratio collapse metrics, scheduler-level
       early stopping, truncation and resampling repair policies.
 
-arxiv_categories: [cs.RO, eess.SY, cs.LG, cs.CL]
+  - name: "LLM inference efficiency and long-context serving"
+    description: >
+      Making decoding cheaper or longer-context rather than more
+      stable: KV-cache compression, eviction and quantization,
+      speculative and multi-token decoding, attention kernels,
+      paged/batched serving schedulers, and algorithm-hardware
+      co-design for the decode path.
+
+# Robotics topics above are parked; re-add cs.RO and eess.SY to
+# arxiv_categories if you uncomment them.
+arxiv_categories: [cs.LG, cs.CL]
 lookback_days: 7
-max_candidates: 200
+max_candidates: 1200
 top_n: 12
 min_relevance_score: 6
 
