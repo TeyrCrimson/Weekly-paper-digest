@@ -1,0 +1,20 @@
+# Weekly paper digest
+
+| Title | Score | Topics | One-liner |
+|---|---|---|---|
+| [Random Attention: Rethinking KV Cache Eviction for Efficient Reasoning](2609.03430-random-attention-rethinking-kv-cache-evi.md) | 10 | LLM inference efficiency and long-context serving | Shows random token eviction matches sophisticated KV cache selection methods while enabling 32-43% higher throughput in LLM inference. |
+| [SGD-KV: Summarization Guided KV Cache Compression](2609.03235-sgd-kv-summarization-guided-kv-cache-com.md) | 10 | LLM inference efficiency and long-context serving | Head-aware KV cache compression using chunk-summarization diagnostics reduces memory by 75% while serving 1M-token contexts. |
+| [BeaconKV: Key-Value Cache Compression Guided by Beacon Queries for Efficient Large Reasoning Model Inference](2609.04971-beaconkv-key-value-cache-compression-gui.md) | 9 | LLM inference efficiency and long-context serving | KV-cache compression for reasoning models using beacon queries to anticipate distant attention patterns. |
+| [KVMem: Virtualizing Million-Token Agent Workspaces on a Consumer GPU](2609.04852-kvmem-virtualizing-million-token-agent-w.md) | 9 | LLM inference efficiency and long-context serving | KV-context virtualization system enabling million-token agent workspaces on consumer GPUs via paged storage. |
+| [Hardware-Aware FP4 FlashAttention-4](2609.04105-hardware-aware-fp4-flashattention-4.md) | 9 | LLM inference efficiency and long-context serving | Addresses FP4 tensor core softmax bottlenecks on Blackwell GPUs with Direct-P for noncausal inference and causal backward paths. |
+| [Unlocking Lossless Speedups in LLMs via Discrete Diffusion](2609.04010-unlocking-lossless-speedups-in-llms-via.md) | 9 | LLM inference efficiency and long-context serving | Achieves lossless 3x speedups in LLM generation via diffusion-augmented models that emit multiple tokens in parallel. |
+| [VestigeKV: The NoPE-MLA KV Cache Carries Its Own Eviction Signal in a Vestigial Branch](2609.03949-vestigekv-the-nope-mla-kv-cache-carries.md) | 9 | LLM inference efficiency and long-context serving | Achieves 8x-32x KV cache compression via query-independent salience signal from NoPE MLA's decoupled branch without quality loss. |
+| [Select, Compress, Reinvest: A Controlled Study of Visual-Token Allocation in Long-Video MLLMs](2609.03820-select-compress-reinvest-a-controlled-st.md) | 9 | LLM inference efficiency and long-context serving | Demonstrates frame selection, compression, and reinvestment as key levers for visual token allocation in long-video MLLMs. |
+| [LeanStream: A Speculate-and-Refine Streaming Framework for Efficient on-Device LLM Inference](2609.03079-leanstream-a-speculate-and-refine-stream.md) | 9 | LLM inference efficiency and long-context serving | Streaming speculate-and-refine framework that overlaps GPU computation with storage I/O to reduce on-device LLM memory and improve throughput. |
+| [Language Models Can Control Their Own Attention](2609.02737-language-models-can-control-their-own-at.md) | 9 | LLM inference efficiency and long-context serving | Declarative Attention protocol eliciting models to declare attention requirements, enabling skipping most KV cache reads during long-context decoding. |
+| [Quality Recovery for Quantized KV Caches via Low-Rank Attention Adaptation](2609.04263-quality-recovery-for-quantized-kv-caches.md) | 9 | LLM inference efficiency and long-context serving | Low-rank projection adaptation recovers 54-76% of quality loss from quantized KV caches across multiple fixed cache formats. |
+| [CRISP: Cliff-awaRe Input-adaptive Sparse Prefilling with Structural-Mass-Motivated Routing](2609.01925-crisp-cliff-aware-input-adaptive-sparse.md) | 9 | LLM inference efficiency and long-context serving | Adaptive sparse prefilling for long-context LLM inference via structural mass routing. |
+
+---
+
+_Run: 2026-09-07 12:43 UTC · 23 LLM calls · 31046 in / 198230 out tokens · reported cost $5.5203 (subscription usage — should be $0 on API billing)_
