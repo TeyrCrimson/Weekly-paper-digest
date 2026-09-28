@@ -1,0 +1,26 @@
+# Weekly summary
+
+## The week in one paragraph
+Eight digests this week cluster around a single move: stop asking one model to do everything, and instead let a sparse, cheap, or auxiliary signal (LiDAR anchors, IMU, event streams, geometric footprints) correct or ground a dense, feed-forward neural prediction. Three papers (FounRef, DAVIO, and the untitled event-completion/streaming-perception paper) apply this pattern to depth, SLAM, and streaming segmentation respectively, each with real controlled ablations but narrow evaluation domains. Two more (DepthEvidence, PIMDE) push metric depth into new territory — language-grounded VQA reasoning and perceptual interpretability — with DepthEvidence's headline numbers weakened by some mismatched baseline configurations. A separate pair (CSCWD, FoCal) chases cheap, edge-deployable detection accuracy via architectural redesign, and both papers' own ablations concede that the "novel" loss/module isn't unambiguously the source of the win. The UAV geometric-localization paper is the outlier — a striking scale result on real flights but resting on only seven trials. Nothing here is a clean, unqualified state-of-the-art claim; every paper carries at least one self-acknowledged caveat about domain narrowness, weak/mismatched baselines, or benchmarks the authors built themselves.
+
+## Themes
+- **Sparse auxiliary signals correcting dense feed-forward priors** — *FounRef*, *DAVIO*, and the event-completion streaming-perception paper all decouple "get plausible dense geometry" from "get it locally correct," using LiDAR anchors, IMU+feed-forward depth, and event streams respectively as the correcting signal. Collectively they show this decoupling beats end-to-end learned fusion on generalization and structural fidelity — but each leans on evaluation the authors partly built or filtered themselves (FounRef's non-KITTI "ground truth" is another foundation model's opinion; the event paper's biggest gains are on its own synthetic SHF-Emerge benchmark; DAVIO's strongest number is a controlled matched-pose comparison, not full end-to-end evaluation).
+- **Metric depth pushed into new downstream targets** — *DepthEvidence* (feeds depth into a VLM's language reasoning) and *PIMDE* (splits depth estimation into interpretable perceptual channels) both treat raw depth accuracy as necessary but not sufficient. DepthEvidence's ablations do isolate a genuine mechanism effect, but its dense-depth accuracy claims are inflated somewhat by baselines evaluated out-of-domain (near-zero scores); PIMDE explicitly does not chase new accuracy, only interpretability.
+- **Efficient edge/aerial detection via architecture, not loss novelty** — *CSCWD* and *FoCal* both report real on-device or FPS gains on lightweight detectors, but each paper's own ablation undercuts its claimed core contribution: CSCWD admits a competing loss (MGD) beats its proposed CWD loss on two of four metrics, and FoCal shows a plain backbone-sharing redesign (RR) accounts for roughly as much of the gain as its namesake frequency modules. Both are validated on essentially one dataset for the critical ablations.
+- **Geometry over appearance for large-scale localization** — the UAV building-footprint paper is a standalone but notable data point: geometric (not visual) matching survives at metropolitan scale where appearance-based baselines collapse to zero, though the entire result rests on seven real flights in one city under uniform daytime conditions.
+
+## Read these
+- **DepthEvidence** — the most ambitious integration (depth prediction wired into VLM reasoning as attendable tokens) with a genuinely clean ablation isolating the claimed mechanism from simply adding more depth-training signal.
+- **FounRef** — the most careful, self-aware paper in the set: a simple decoupling idea (frozen prior + sparse-anchor calibration) tested across 5 datasets and 6 priors, with the authors explicitly flagging where their own headline numbers depend on a chosen operating point.
+- **DAVIO** — the one paper offering an apples-to-apples controlled comparison (same poses, mapper-only) that actually isolates its core design choice (scale-along-ray correction), rather than resting mainly on end-to-end numbers inherited from a stronger underlying filter.
+
+## Skip unless
+- **CSCWD** — you need a concrete edge-deployment recipe for aerial tiny-object detection and can tolerate a single-domain (drone/UAV), single-dataset ablation with no public code.
+- **FoCal** — you're specifically evaluating RGB-IR aerial fusion architectures and are willing to discount the frequency-topology claim to one dataset's ablation.
+- **PIMDE** — interpretability of depth predictions (not accuracy) is your goal.
+- **The event-completion/streaming-perception paper** — you work on causal, real-time streaming perception under rapid object emergence and can accept that most reported gains concentrate on the authors' own synthetic benchmark rather than real driving data.
+- **UAV geometric localization** — you're designing GNSS-denied localization specifically for dense urban buildings and can treat the 452 km² result as a promising but statistically thin (7-flight) proof of concept.
+
+---
+
+_Per-paper digests: [index.md](index.md)_
