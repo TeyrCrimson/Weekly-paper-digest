@@ -17,6 +17,11 @@ log = logging.getLogger(__name__)
 API_URL = "http://export.arxiv.org/api/query"
 PAGE_SIZE = 100
 REQUEST_GAP_S = 3  # arXiv rate guidance: 1 request / 3 s
+# 429 backoff, then give up loudly. Sized against an observed arXiv-wide
+# throttle (2026-09-13) that outlasted 255s: a weekly cron that gives up
+# early loses the whole week, so patience is cheaper than a missed run.
+RETRY_BACKOFF_S = (30, 120, 300, 900)
+RETRYABLE_STATUS = {429, 503}  # throttled / overloaded; anything else is our bug
 ATOM = {"atom": "http://www.w3.org/2005/Atom"}
 
 
@@ -49,15 +54,35 @@ def fetch_papers(cfg: Config) -> list[Paper]:
 
 
 def _get_page(categories: list[str], start: int, count: int) -> str:
-    resp = requests.get(API_URL, timeout=30, params={
+    """One page of results, retried through arXiv's transient failures: 429 and
+    503 (documented when it is overloaded) plus read/connection timeouts. A
+    weekly cron that dies on any of them loses the whole week. Other HTTP
+    errors — a malformed query — fail immediately and loudly.
+    """
+    params = {
         "search_query": " OR ".join(f"cat:{c}" for c in categories),
         "start": start,
         "max_results": count,
         "sortBy": "submittedDate",
         "sortOrder": "descending",
-    })
-    resp.raise_for_status()
-    return resp.text
+    }
+    last = "no attempt made"
+    for backoff in (*RETRY_BACKOFF_S, None):  # None = last try, don't sleep after it
+        try:
+            resp = requests.get(API_URL, timeout=30, params=params)
+            if resp.status_code not in RETRYABLE_STATUS:
+                resp.raise_for_status()
+                return resp.text
+            last = f"HTTP {resp.status_code}"
+            wait = int(resp.headers.get("Retry-After") or backoff or 0)
+        except (requests.Timeout, requests.ConnectionError) as e:
+            last, wait = type(e).__name__, backoff or 0
+        if backoff is None:
+            break
+        log.warning("arXiv %s at start=%d; retrying in %ds", last, start, wait)
+        time.sleep(wait)
+    raise RuntimeError(f"arXiv unreachable at start={start} after "
+                       f"{len(RETRY_BACKOFF_S)} retries: {last}")
 
 
 def parse_atom(xml_text: str) -> list[Paper]:

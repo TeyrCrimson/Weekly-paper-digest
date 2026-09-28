@@ -4,7 +4,8 @@ Every Monday a GitHub Actions cron job fetches the last week's arXiv papers
 in your configured categories, ranks them against your topic list with a
 cheap Haiku call, deep-analyzes the top N with Sonnet, and commits one
 Markdown digest per paper to `digests/YYYY-Www/` — including a weekly
-`index.md` with scores, matched topics, and token/cost totals.
+`index.md` with scores, matched topics, and token/cost totals, and a
+`SUMMARY.md` brief condensing the whole week into themes and a read/skip call.
 
 All LLM calls go through **Claude Code in headless mode** (`claude -p`),
 billed against a **Claude subscription** (Pro/Max/Team/Enterprise) via an
@@ -87,7 +88,7 @@ config/topics.yaml
   → fetch.py    arXiv API, last lookback_days, ≤ max_candidates papers
   → rank.py     one batched Haiku call scores relevance 0–10 vs topics
   → analyze.py  top_n papers ≥ min_relevance_score: PDF → text → one Sonnet call
-  → render.py   digests/YYYY-Www/: one .md per paper + index.md
+  → render.py   digests/YYYY-Www/: one .md per paper + index.md + SUMMARY.md
 ```
 
 Stages communicate via dataclasses in `models.py`; `main.py` orchestrates.

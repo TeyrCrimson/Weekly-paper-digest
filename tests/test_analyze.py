@@ -63,3 +63,26 @@ def test_truncate_keeps_head_and_tail():
     assert len(out) < 82_000
     assert out.startswith("A") and out.endswith("B")
     assert "truncated" in out
+
+
+def test_summarize_week(monkeypatch, topics):
+    from paperdigest.models import Analysis
+    calls = []
+
+    def fake_complete(prompt, system, model):
+        calls.append((prompt, system, model))
+        return LLMResult(text="## The week in one paragraph\nbrief", usage={})
+
+    monkeypatch.setattr(llm, "complete", fake_complete)
+    ok = Analysis(ranked=_ranked(0, 9), markdown="## TL;DR\nbody", usage={})
+    broken = Analysis(ranked=_ranked(1, 9), markdown="", usage={}, error="PDF unavailable: 404")
+
+    assert analyze.summarize_week([ok, broken], _cfg(topics)).startswith("## The week")
+    prompt, system, model = calls[0]
+    assert model == "sonnet" and system == analyze.SUMMARY_SYSTEM_PROMPT
+    assert "part 0" in prompt and "part 1" not in prompt  # failed analyses excluded
+
+
+def test_summarize_week_skips_call_when_nothing_analyzed(monkeypatch, topics):
+    monkeypatch.setattr(llm, "complete", lambda *a: pytest.fail("no papers -> no call"))
+    assert analyze.summarize_week([], _cfg(topics)) == ""

@@ -44,3 +44,11 @@ def test_rerun_is_idempotent(tmp_path):
     files = {f.name for f in week_dir.iterdir()}
     assert "index.md" in files and len(files) == 2
     assert not any("00000" in f for f in files)  # old week's file gone
+
+
+def test_summary_written_and_linked(tmp_path):
+    week_dir = render_digests(tmp_path, [_analysis(0)], USAGE, RUN_TIME,
+                              summary="## The week in one paragraph\nTwo papers landed.")
+    assert (week_dir / "SUMMARY.md").read_text().startswith("# Weekly summary")
+    assert "](SUMMARY.md)" in (week_dir / "index.md").read_text()
+    assert len(list(week_dir.iterdir())) == 3  # index + SUMMARY + one digest

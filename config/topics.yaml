@@ -1,42 +1,54 @@
 topics:
-  # - name: "DDS interoperability in ROS 2"
-  #  description: >
-  #    Cross-vendor DDS (CycloneDDS/FastDDS) interop, QoS matching,
-  #    discovery over constrained networks.
-  #- name: "Delay-compensated perception for mobile robots"
-  #  description: >
-  #    State estimation and control under sensing latency; delayed
-  #    measurement fusion, Kalman rewind/replay
-  - name: "Pre-inference input sanitization for generation stability"
+  - name: "Onboard object detection from a moving UAV"
     description: >
-      Prompt and context preprocessing that prevents degenerate
-      generation: near-duplicate context collapse, input
-      normalization, constrained or grammar-based decoding setup,
-      and adversarial prompts that deliberately induce repetition
-      loops. NOT general inference-efficiency work — cache
-      compression and serving throughput belong to the inference
-      efficiency topic below.
+      Making a real-time single-stage detector (YOLO family, RT-DETR and
+      similar) hold up when the camera is on a drone in flight: small and
+      low-pixel targets seen from altitude, motion blur and rolling-shutter
+      smear from platform vibration and fast yaw, rapid scale and viewpoint
+      change between consecutive frames, aerial domain shift away from
+      ground-collected training data, augmentation and synthetic data for
+      UAV imagery, temporal or tracking-assisted detection that stabilises
+      boxes across frames, and latency/accuracy trade-offs on embedded
+      edge GPUs (Jetson, OAK, NPU). NOT generic COCO architecture papers
+      with no motion, aerial, or on-device latency angle.
 
-  - name: "Post-inference detection and repair of degenerate output"
+  - name: "Metric and temporally-consistent monocular depth"
     description: >
-      Detecting and recovering from repetition loops during or after
-      decoding: n-gram and rolling-hash loop detectors, compression
-      ratio and type-token-ratio collapse metrics, scheduler-level
-      early stopping, truncation and resampling repair policies.
+      Fixing scale and shift ambiguity in monocular depth foundation models
+      (Depth Anything V2/V3, Metric3D, UniDepth, ZoeDepth, MoGe): recovering
+      genuinely metric depth from known camera intrinsics, per-frame
+      scale/shift drift where the network re-normalises as the scene
+      changes, temporally consistent video depth under camera translation,
+      keeping a static ground plane static while the camera climbs or
+      descends, and pinning absolute scale by fusing depth with IMU,
+      barometer, VIO, or sparse metric anchors. Includes benchmarks and
+      metrics that actually measure scale drift over a trajectory rather
+      than only per-frame relative error.
 
-  - name: "LLM inference efficiency and long-context serving"
-    description: >
-      Making decoding cheaper or longer-context rather than more
-      stable: KV-cache compression, eviction and quantization,
-      speculative and multi-token decoding, attention kernels,
-      paged/batched serving schedulers, and algorithm-hardware
-      co-design for the decode path.
+  # Parked 2026-09-13: cs.CV + cs.RO already fill the fetch budget for a
+  # 7-day window, so these can't ride along without silently truncating the
+  # lookback. Uncomment together with cs.LG/cs.CL below.
+  # - name: "Pre-inference input sanitization for generation stability"
+  #   description: >
+  #     Prompt and context preprocessing that prevents degenerate
+  #     generation: near-duplicate context collapse, input normalization,
+  #     constrained or grammar-based decoding setup, and adversarial prompts
+  #     that deliberately induce repetition loops.
+  # - name: "Post-inference detection and repair of degenerate output"
+  #   description: >
+  #     Detecting and recovering from repetition loops during or after
+  #     decoding: n-gram and rolling-hash loop detectors, compression ratio
+  #     and type-token-ratio collapse metrics, scheduler-level early
+  #     stopping, truncation and resampling repair policies.
+  # - name: "LLM inference efficiency and long-context serving"
+  #   description: >
+  #     KV-cache compression, eviction and quantization, speculative and
+  #     multi-token decoding, attention kernels, paged/batched serving
+  #     schedulers, and algorithm-hardware co-design for the decode path.
 
-# Robotics topics above are parked; re-add cs.RO and eess.SY to
-# arxiv_categories if you uncomment them.
-arxiv_categories: [cs.LG, cs.CL]
+arxiv_categories: [cs.CV, cs.RO]
 lookback_days: 7
-max_candidates: 1200
+max_candidates: 2000
 top_n: 12
 min_relevance_score: 6
 

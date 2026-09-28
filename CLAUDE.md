@@ -127,6 +127,8 @@ keeping abstract + intro + method + experiments + conclusion preferentially).
 ```
 digests/
   2026-W27/
+    SUMMARY.md                # one extra LLM call: the week condensed to
+                              # themes + read/skip, written from the digests
     index.md                  # table: title | score | topics | one-liner
     2506.01234-short-slug.md
     ...
@@ -176,7 +178,7 @@ zero-cost smoke test for config and fetch logic.
 ## Usage guardrails
 
 - Ranking: one batched Haiku call over titles+abstracts (chunk if >100).
-- Analysis: `top_n` Sonnet calls max per week. Subscription plans have
+- Analysis: `top_n` Sonnet calls max per week, plus one more for SUMMARY.md. Subscription plans have
   rolling usage limits, so keep top_n modest; spread is not needed since
   10 calls/week is well within limits.
 - BILLING VERIFICATION (first run only): after the first scheduled run,

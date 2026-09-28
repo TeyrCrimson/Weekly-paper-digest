@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -69,3 +71,78 @@ def test_parse_atom():
     assert "QoS matching" in p.abstract
 
     assert papers[1].arxiv_id == "2507.05678"
+
+
+def test_get_page_retries_on_429(monkeypatch):
+    codes = iter([429, 200])
+    slept = []
+    monkeypatch.setattr(fetch.time, "sleep", slept.append)
+
+    class Resp:
+        def __init__(self, code):
+            self.status_code, self.headers, self.text = code, {"Retry-After": "7"}, "<feed/>"
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise AssertionError(f"unexpected raise for {self.status_code}")
+
+    monkeypatch.setattr(fetch.requests, "get", lambda *a, **k: Resp(next(codes)))
+    assert fetch._get_page(["cs.CV"], 0, 100) == "<feed/>"
+    assert slept == [7]  # honoured Retry-After, then succeeded
+
+
+def test_get_page_retries_transport_errors(monkeypatch):
+    import requests as rq
+
+    attempts = []
+    monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
+
+    class Resp:
+        status_code, headers, text = 200, {}, "<feed/>"
+
+        def raise_for_status(self):
+            pass
+
+    def flaky(*a, **k):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise rq.Timeout("read timed out")
+        if len(attempts) == 2:
+            raise rq.ConnectionError("reset")
+        return Resp()
+
+    monkeypatch.setattr(fetch.requests, "get", flaky)
+    assert fetch._get_page(["cs.CV"], 0, 100) == "<feed/>"
+    assert len(attempts) == 3
+
+
+def test_get_page_gives_up_loudly(monkeypatch):
+    import requests as rq
+
+    monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
+    monkeypatch.setattr(fetch.requests, "get",
+                        lambda *a, **k: (_ for _ in ()).throw(rq.Timeout("nope")))
+    with pytest.raises(RuntimeError, match="arXiv unreachable"):
+        fetch._get_page(["cs.CV"], 0, 100)
+
+
+def test_get_page_does_not_retry_client_errors(monkeypatch):
+    import requests as rq
+
+    calls = []
+
+    class Bad:
+        status_code, headers, text = 400, {}, "bad query"
+
+        def raise_for_status(self):
+            raise rq.HTTPError("400 Bad Request")
+
+    def once(*a, **k):
+        calls.append(1)
+        return Bad()
+
+    monkeypatch.setattr(fetch.requests, "get", once)
+    monkeypatch.setattr(fetch.time, "sleep", lambda s: pytest.fail("must not retry a 400"))
+    with pytest.raises(rq.HTTPError):
+        fetch._get_page(["cs.CV"], 0, 100)
+    assert len(calls) == 1

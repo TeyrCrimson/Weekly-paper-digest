@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from paperdigest import llm
-from paperdigest.analyze import analyze_papers
+from paperdigest.analyze import analyze_papers, summarize_week
 from paperdigest.config import load_config
 from paperdigest.fetch import fetch_papers
 from paperdigest.models import RankedPaper
@@ -30,8 +30,9 @@ def main(argv: list[str] | None = None) -> None:
 
     ranked = rank_papers(papers, cfg)
     analyses = analyze_papers(ranked, cfg)
+    summary = summarize_week(analyses, cfg)  # after analysis: its usage counts too
     week_dir = render_digests(Path("digests"), analyses, llm.USAGE_LOG,
-                              datetime.now(timezone.utc))
+                              datetime.now(timezone.utc), summary)
     log.info("wrote %d digests to %s", len(analyses), week_dir)
 
 

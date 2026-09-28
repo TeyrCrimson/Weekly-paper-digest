@@ -94,3 +94,43 @@ def _truncate(text: str) -> str:
     # section-aware selection only if middle-heavy papers prove to matter.
     return (text[:HEAD_CHARS] + "\n\n[... middle of paper truncated ...]\n\n"
             + text[-TAIL_CHARS:])
+
+
+SUMMARY_SYSTEM_PROMPT = """\
+You are writing the weekly brief that sits on top of a set of per-paper
+digests. The reader has already seen a one-line-per-paper index and wants the
+week condensed: what actually landed, and what deserves their reading time.
+
+Respond in Markdown with exactly these sections, in this order, and nothing
+else:
+
+## The week in one paragraph
+5 sentences max.
+
+## Themes
+2-5 bullets. Name the theme, name the papers under it by title, and say what
+the cluster collectively establishes (or fails to).
+
+## Read these
+Up to 3 papers, one line each: why this one rather than its neighbours.
+
+## Skip unless
+The rest, one line each: the condition under which the paper would matter.
+
+Rules:
+- Base everything ONLY on the digests provided; do not invent findings.
+- Carry the digests' caveats through: if a cluster is simulation-only or
+  leans on weak baselines, say so here rather than letting the brief read
+  stronger than the evidence.
+"""
+
+
+def summarize_week(analyses: list[Analysis], cfg: Config) -> str:
+    """One extra call condensing the week's digests into SUMMARY.md."""
+    blob = "\n\n---\n\n".join(
+        f"# {a.ranked.paper.title} (relevance {a.ranked.score}/10)\n{a.markdown}"
+        for a in analyses if not a.error
+    )
+    if not blob:
+        return ""
+    return llm.complete(_truncate(blob), SUMMARY_SYSTEM_PROMPT, cfg.analysis_model).text

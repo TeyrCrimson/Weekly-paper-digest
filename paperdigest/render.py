@@ -10,7 +10,8 @@ from paperdigest.models import Analysis
 
 
 def render_digests(digests_root: Path, analyses: list[Analysis],
-                   usage_log: list[dict], run_time: datetime) -> Path:
+                   usage_log: list[dict], run_time: datetime,
+                   summary: str = "") -> Path:
     """Write digests/YYYY-Www/. Idempotent: an existing week folder is replaced."""
     iso = run_time.isocalendar()
     week_dir = digests_root / f"{iso.year}-W{iso.week:02d}"
@@ -30,7 +31,12 @@ def render_digests(digests_root: Path, analyses: list[Analysis],
         (week_dir / fname).write_text(_paper_md(a), encoding="utf-8")
         rows.append(f"| [{title}]({fname}) | {a.ranked.score} | {topics} | {a.ranked.one_liner} |")
 
-    (week_dir / "index.md").write_text(_index_md(rows, usage_log, run_time), encoding="utf-8")
+    if summary:
+        (week_dir / "SUMMARY.md").write_text(
+            f"# Weekly summary\n\n{summary.strip()}\n\n---\n\n"
+            f"_Per-paper digests: [index.md](index.md)_\n", encoding="utf-8")
+    (week_dir / "index.md").write_text(
+        _index_md(rows, usage_log, run_time, bool(summary)), encoding="utf-8")
     return week_dir
 
 
@@ -49,13 +55,16 @@ def _paper_md(a: Analysis) -> str:
     )
 
 
-def _index_md(rows: list[str], usage_log: list[dict], run_time: datetime) -> str:
+def _index_md(rows: list[str], usage_log: list[dict], run_time: datetime,
+              has_summary: bool) -> str:
     body = "\n".join(rows) if rows else "_No papers met the relevance threshold this week._"
+    lede = "[**Weekly summary →**](SUMMARY.md)\n\n" if has_summary else ""
     tokens_in = sum(u.get("input_tokens", 0) for u in usage_log)
     tokens_out = sum(u.get("output_tokens", 0) for u in usage_log)
     cost = sum(u.get("cost_usd", 0) or 0 for u in usage_log)
     return (
         f"# Weekly paper digest\n\n"
+        f"{lede}"
         f"| Title | Score | Topics | One-liner |\n"
         f"|---|---|---|---|\n"
         f"{body}\n\n"
