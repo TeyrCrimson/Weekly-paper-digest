@@ -1,0 +1,26 @@
+# Weekly summary
+
+## The week in one paragraph
+Seven digests mostly circle the same problem from different angles: getting metric-reliable depth and multi-object association out of cheap sensors in the field rather than in simulation. The strongest signal is that geometry (stereo triangulation, object-level radar anchoring) still beats learned monocular/generative depth by a wide margin, and the gap widens rather than closes at higher resolution. Two multi-agent coordination papers (CARNet for multi-drone detection, CoHelix for event-camera propeller tracking) show joint/shared representations beating decoupled pipelines, but both rest on confounded ablations and partly self-authored baselines that keep the improvements provisional. A pair of multispectral aerial-detection papers (SGLDet, S³E-Det) add incremental spectral-aware modules to existing detectors with consistent but narrow, largely single-dataset-ablated gains. The week's one genuine field study, CURSE'26, is the reality check: an operational damage-assessment model holds up for buildings but fails badly on roads once off-the-shelf map data doesn't line up with drone imagery.
+
+## Themes
+- **Geometry beats learning for metric depth** — *WildDepth-v2*, *Which Depth Estimator for Jetson AGX Orin?*, *PRISM*. Together these establish that object-level/geometric anchoring (radar range pooled per-animal, stereo triangulation) reliably outperforms monocular/generative learned depth, and that learned depth degrades exactly where geometry holds up (higher resolution, biased per-pixel inference); PRISM's physics-based noise disentanglement narrows the sim-to-real gap but beats the strongest prior baseline by only ~3 points, far less than its headline framing suggests.
+- **Joint/shared representations beat decoupled multi-object pipelines** — *CARNet*, *CoHelix*. Both replace a two-stage "associate-then-fuse/track" design with one shared representation (a pairwise relation head; a single cross-propeller homography) and show real gains, but each paper's own ablations admit confounded comparisons (quantity-vs-diversity of evidence, bundled solver changes) and partly self-built or non-independent baselines, so the causal story for *why* joint modeling wins is weaker than the headline numbers imply.
+- **Incremental spectral-aware detector architectures** — *SGLDet* (the spectral-driven global/local fusion paper) and *S³E-Det*. Both bolt new modules onto existing multispectral detectors (OSSDet, S2ADet) for consistent few-point mAP gains on MODA/HOD3K/DroneVehicle, but ablations are run almost exclusively on MODA, baselines aren't uniformly retrained, and a key competitor (DAHNet) is absent from comparison tables in one case — the clusters establish incremental architectural progress, not a settled state of the art.
+- **Field reality check vs. lab/sim validation** — *CURSE'26* is the week's only true field test, and it shows a "mature" building-damage model transferring well geographically while the paired road-damage model fails hard (35% flagged vs ~5% true) from map/imagery misalignment — a concrete reminder that the metric-depth and detection gains elsewhere this week are still measured mostly in simulation, single-site capture, or curated benchmarks rather than live operational conditions.
+
+## Read these
+- **WildDepth-v2** — rare combination of a genuine metric-depth/motion win (object-level radar calibration, Doppler-transfer motion masks) alongside unusually honest negative results (per-pixel radar fails, naive auto-calibration silently drifts) that map out where this whole sensor-fusion approach breaks.
+- **Which Depth Estimator for Jetson AGX Orin?** — the most directly actionable paper of the week for anyone deploying depth on embedded hardware: a resolution-swept, cross-method comparison plus a "flying points" edge-error metric that standard AbsRel misses entirely.
+- **CURSE'26 damage-assessment findings** — the only paper this week testing a model inside an actual multi-agency field exercise rather than offline/sim, and its clean failure mode (road damage via map misalignment) is a transferable operational lesson, not a tuning footnote.
+
+## Skip unless
+- **CARNet** — unless you need multi-drone cross-view association/fusion specifically, and can tolerate baselines partly built by the same authors plus an unexplained recall drop versus the strongest competitor.
+- **CoHelix** — unless you're tracking rigid, coplanar rotating parts (e.g., propeller RPM) from a moving event camera and can accept non-real-time runtimes and brittleness to calibration error.
+- **PRISM** — unless your deployment is locked to the exact depth-sensor family tested and a ~3-point edge over the next-best generative noise baseline is enough to justify the added pipeline.
+- **SGLDet** — unless you need incremental mAP gains on small/dense multispectral aerial targets and don't require ablation evidence beyond the MODA dataset.
+- **S³E-Det** — unless exact 90°-rotation equivariance under a tight parameter budget is a hard requirement; general (off-grid) rotation robustness and post-NMS behavior are explicitly out of scope for its "strict" claim.
+
+---
+
+_Per-paper digests: [index.md](index.md)_
