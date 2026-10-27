@@ -10,11 +10,12 @@ from paperdigest.fetch import fetch_papers, parse_atom
 FIXTURE = (Path(__file__).parent / "fixtures" / "arxiv_atom.xml").read_text()
 
 
-def _cfg(max_candidates: int) -> Config:
+def _cfg(max_candidates: int, arxiv_queries: list[str] | None = None) -> Config:
     return Config(
         topics=[Topic("t", "d")], arxiv_categories=["cs.LG"], lookback_days=7,
         max_candidates=max_candidates, top_n=1, min_relevance_score=6,
         ranking_model="haiku", analysis_model="sonnet",
+        arxiv_queries=arxiv_queries or [],
     )
 
 
@@ -29,7 +30,7 @@ def _entry(i: int, published: datetime) -> str:
 def _feed_factory(monkeypatch, oldest_age_days: float):
     """Serve pages of 100 entries spread over `oldest_age_days`, newest first."""
     now = datetime.now(timezone.utc)
-    def fake_get_page(categories, start, count):
+    def fake_get_page(query, start, count):
         entries = "".join(
             _entry(start + n, now - timedelta(days=oldest_age_days * (start + n) / 300))
             for n in range(count)
@@ -54,6 +55,23 @@ def test_fetch_papers_warns_when_cap_truncates_window(monkeypatch, caplog):
     papers = fetch_papers(_cfg(max_candidates=200))
     assert len(papers) == 200
     assert "hit max_candidates=200" in caplog.text
+
+
+def test_fetch_papers_merges_query_streams(monkeypatch):
+    """Extra queries are fetched separately and deduped against the category feed."""
+    now = datetime.now(timezone.utc)
+    feeds = {"cat:cs.LG": [1, 2], "abs:x": [2, 3]}  # paper 2 appears in both
+    seen = []
+    def fake_get_page(query, start, count):
+        seen.append(query)
+        entries = "".join(_entry(i, now - timedelta(hours=i)) for i in feeds[query])
+        return f'<feed xmlns="http://www.w3.org/2005/Atom">{entries}</feed>'
+    monkeypatch.setattr(fetch, "_get_page", fake_get_page)
+    monkeypatch.setattr(fetch, "REQUEST_GAP_S", 0)
+
+    papers = fetch_papers(_cfg(max_candidates=100, arxiv_queries=["abs:x"]))
+    assert seen == ["cat:cs.LG", "abs:x"]
+    assert [p.arxiv_id for p in papers] == ["2607.00001", "2607.00002", "2607.00003"]
 
 
 def test_parse_atom():
@@ -87,7 +105,7 @@ def test_get_page_retries_on_429(monkeypatch):
                 raise AssertionError(f"unexpected raise for {self.status_code}")
 
     monkeypatch.setattr(fetch.requests, "get", lambda *a, **k: Resp(next(codes)))
-    assert fetch._get_page(["cs.CV"], 0, 100) == "<feed/>"
+    assert fetch._get_page("cat:cs.CV", 0, 100) == "<feed/>"
     assert slept == [7]  # honoured Retry-After, then succeeded
 
 
@@ -112,7 +130,7 @@ def test_get_page_retries_transport_errors(monkeypatch):
         return Resp()
 
     monkeypatch.setattr(fetch.requests, "get", flaky)
-    assert fetch._get_page(["cs.CV"], 0, 100) == "<feed/>"
+    assert fetch._get_page("cat:cs.CV", 0, 100) == "<feed/>"
     assert len(attempts) == 3
 
 
@@ -123,7 +141,7 @@ def test_get_page_gives_up_loudly(monkeypatch):
     monkeypatch.setattr(fetch.requests, "get",
                         lambda *a, **k: (_ for _ in ()).throw(rq.Timeout("nope")))
     with pytest.raises(RuntimeError, match="arXiv unreachable"):
-        fetch._get_page(["cs.CV"], 0, 100)
+        fetch._get_page("cat:cs.CV", 0, 100)
 
 
 def test_get_page_does_not_retry_client_errors(monkeypatch):
@@ -144,5 +162,5 @@ def test_get_page_does_not_retry_client_errors(monkeypatch):
     monkeypatch.setattr(fetch.requests, "get", once)
     monkeypatch.setattr(fetch.time, "sleep", lambda s: pytest.fail("must not retry a 400"))
     with pytest.raises(rq.HTTPError):
-        fetch._get_page(["cs.CV"], 0, 100)
+        fetch._get_page("cat:cs.CV", 0, 100)
     assert len(calls) == 1

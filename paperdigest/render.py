@@ -8,6 +8,9 @@ from pathlib import Path
 
 from paperdigest.models import Analysis
 
+LOW_RELEVANCE = ("⚠ **Low relevance:** scored below `min_relevance_score`; included "
+                 "only because it was its topic's best match this week.\n\n")
+
 
 def render_digests(digests_root: Path, analyses: list[Analysis],
                    usage_log: list[dict], run_time: datetime,
@@ -29,7 +32,8 @@ def render_digests(digests_root: Path, analyses: list[Analysis],
             continue
         fname = f"{p.arxiv_id}-{_slug(p.title)}.md"
         (week_dir / fname).write_text(_paper_md(a), encoding="utf-8")
-        rows.append(f"| [{title}]({fname}) | {a.ranked.score} | {topics} | {a.ranked.one_liner} |")
+        score = f"{a.ranked.score} ⚠ low" if a.low_relevance else a.ranked.score
+        rows.append(f"| [{title}]({fname}) | {score} | {topics} | {a.ranked.one_liner} |")
 
     if summary:
         (week_dir / "SUMMARY.md").write_text(
@@ -50,6 +54,7 @@ def _paper_md(a: Analysis) -> str:
         f"**Categories:** {', '.join(p.categories)}\n\n"
         f"**Submitted:** {p.published:%Y-%m-%d}\n\n"
         f"**Relevance:** {a.ranked.score}/10 — matched: {matched}\n\n"
+        f"{LOW_RELEVANCE if a.low_relevance else ''}"
         f"---\n\n"
         f"{a.markdown.strip()}\n"
     )

@@ -26,18 +26,33 @@ ATOM = {"atom": "http://www.w3.org/2005/Atom"}
 
 
 def fetch_papers(cfg: Config) -> list[Paper]:
-    """Papers submitted in the last `lookback_days`, newest first, capped at
-    `max_candidates`."""
+    """Papers submitted in the last `lookback_days` from the category feed plus
+    each `arxiv_queries` stream, deduped by id, newest first. Each stream is
+    capped at `max_candidates` on its own, so a narrow query never loses its
+    few papers to a flooded category feed."""
+    category_query = " OR ".join(f"cat:{c}" for c in cfg.arxiv_categories)
+    by_id: dict[str, Paper] = {}
+    for i, query in enumerate((category_query, *cfg.arxiv_queries)):
+        if i:
+            time.sleep(REQUEST_GAP_S)
+        for p in _fetch_stream(query, cfg):
+            by_id.setdefault(p.arxiv_id, p)
+    papers = sorted(by_id.values(), key=lambda p: p.published, reverse=True)
+    log.info("fetched %d unique papers from %d streams", len(papers), 1 + len(cfg.arxiv_queries))
+    return papers
+
+
+def _fetch_stream(query: str, cfg: Config) -> list[Paper]:
     cutoff = datetime.now(timezone.utc) - timedelta(days=cfg.lookback_days)
     papers: list[Paper] = []
     for start in range(0, cfg.max_candidates, PAGE_SIZE):
         if start:
             time.sleep(REQUEST_GAP_S)
         count = min(PAGE_SIZE, cfg.max_candidates - start)
-        page = parse_atom(_get_page(cfg.arxiv_categories, start, count))
+        page = parse_atom(_get_page(query, start, count))
         for p in page:
             if p.published < cutoff:
-                log.info("fetched %d papers (hit %d-day cutoff)", len(papers), cfg.lookback_days)
+                log.info("%s: %d papers (hit %d-day cutoff)", query, len(papers), cfg.lookback_days)
                 return papers
             papers.append(p)
         if len(page) < count:
@@ -45,22 +60,22 @@ def fetch_papers(cfg: Config) -> list[Paper]:
     else:
         # Exhausted max_candidates without reaching the cutoff: the lookback
         # window is silently truncated and older papers were never seen.
-        log.warning("hit max_candidates=%d before the %d-day cutoff — oldest fetched "
-                    "is %s; raise max_candidates or narrow arxiv_categories",
-                    cfg.max_candidates, cfg.lookback_days,
+        log.warning("%s: hit max_candidates=%d before the %d-day cutoff — oldest "
+                    "fetched is %s; raise max_candidates or narrow the query",
+                    query, cfg.max_candidates, cfg.lookback_days,
                     papers[-1].published.date() if papers else "n/a")
-    log.info("fetched %d papers", len(papers))
+    log.info("%s: %d papers", query, len(papers))
     return papers
 
 
-def _get_page(categories: list[str], start: int, count: int) -> str:
+def _get_page(query: str, start: int, count: int) -> str:
     """One page of results, retried through arXiv's transient failures: 429 and
     503 (documented when it is overloaded) plus read/connection timeouts. A
     weekly cron that dies on any of them loses the whole week. Other HTTP
     errors — a malformed query — fail immediately and loudly.
     """
     params = {
-        "search_query": " OR ".join(f"cat:{c}" for c in categories),
+        "search_query": query,
         "start": start,
         "max_results": count,
         "sortBy": "submittedDate",

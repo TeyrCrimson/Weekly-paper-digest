@@ -28,6 +28,14 @@ def test_valid_config(tmp_path):
     assert cfg.arxiv_categories == ["cs.RO", "eess.SY"]
     assert cfg.top_n == 10
     assert cfg.ranking_model == "haiku"
+    assert cfg.arxiv_queries == []  # optional
+
+
+def test_arxiv_queries(tmp_path):
+    cfg = load_config(_write(tmp_path, VALID + 'arxiv_queries: [\'abs:"prompt injection"\']\n'))
+    assert cfg.arxiv_queries == ['abs:"prompt injection"']
+    with pytest.raises(ValueError, match="arxiv_queries"):
+        load_config(_write(tmp_path, VALID + "arxiv_queries: [1]\n"))
 
 
 def test_missing_key(tmp_path):

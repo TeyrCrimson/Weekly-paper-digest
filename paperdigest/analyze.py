@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+from dataclasses import replace
 
 import requests
 from pypdf import PdfReader
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 MAX_CHARS = 80_000
 HEAD_CHARS = 60_000  # abstract/intro/method live at the front …
 TAIL_CHARS = 20_000  # … experiments/conclusion at the back
+LOW_RELEVANCE_NOTE = ", LOW RELEVANCE: below threshold, its topic's only match"
 
 ANALYSIS_SYSTEM_PROMPT = """\
 You are writing a technical digest of ONE research paper for a strong
@@ -52,15 +54,45 @@ Rules:
 
 
 def analyze_papers(ranked: list[RankedPaper], cfg: Config) -> list[Analysis]:
-    """Analyze the top_n papers scoring >= min_relevance_score."""
+    """Analyze up to top_n papers, spread across topics (see select_for_analysis)."""
+    picked = select_for_analysis(ranked, [t.name for t in cfg.topics],
+                                 cfg.top_n, cfg.min_relevance_score)
+    log.info("analyzing %d of %d ranked papers", len(picked), len(ranked))
     analyses = []
-    for rp in ranked[:cfg.top_n]:
-        if rp.score < cfg.min_relevance_score:
-            log.info("skipping %s: score %d < min_relevance_score %d",
-                     rp.paper.arxiv_id, rp.score, cfg.min_relevance_score)
-            continue
-        analyses.append(_analyze_one(rp, cfg.analysis_model))
+    for rp in picked:
+        low = rp.score < cfg.min_relevance_score
+        if low:
+            log.info("including %s below min_relevance_score (%d < %d): best match for %s",
+                     rp.paper.arxiv_id, rp.score, cfg.min_relevance_score, rp.matched_topics)
+        analyses.append(replace(_analyze_one(rp, cfg.analysis_model), low_relevance=low))
     return analyses
+
+
+def select_for_analysis(ranked: list[RankedPaper], topic_names: list[str],
+                        top_n: int, min_score: int) -> list[RankedPaper]:
+    """Every topic first takes its best match whatever its score, so a sparse
+    topic always surfaces something (render flags it as low relevance). Then
+    topics take turns taking their best unpicked paper >= min_score, so one
+    busy topic can't take every slot (2026-W37/W39: inference efficiency took
+    12/12). Slots no topic can fill go to the highest remaining scores."""
+    by_score = sorted(ranked, key=lambda r: r.score, reverse=True)
+    eligible = [r for r in by_score if r.score >= min_score]
+    picked: list[RankedPaper] = []
+
+    def take(pool: list[RankedPaper], name: str) -> bool:
+        r = next((r for r in pool if name in r.matched_topics
+                  and not any(r is p for p in picked)), None)
+        if r and len(picked) < top_n:
+            picked.append(r)
+        return r is not None
+
+    for name in topic_names:
+        take(by_score, name)
+    # list, not generator: every topic gets its turn before any() short-circuits
+    while len(picked) < top_n and any([take(eligible, n) for n in topic_names]):
+        pass
+    picked += [r for r in eligible if not any(r is p for p in picked)][:top_n - len(picked)]
+    return sorted(picked, key=lambda r: r.score, reverse=True)
 
 
 def _analyze_one(rp: RankedPaper, model: str) -> Analysis:
@@ -128,7 +160,8 @@ Rules:
 def summarize_week(analyses: list[Analysis], cfg: Config) -> str:
     """One extra call condensing the week's digests into SUMMARY.md."""
     blob = "\n\n---\n\n".join(
-        f"# {a.ranked.paper.title} (relevance {a.ranked.score}/10)\n{a.markdown}"
+        f"# {a.ranked.paper.title} (relevance {a.ranked.score}/10"
+        f"{LOW_RELEVANCE_NOTE if a.low_relevance else ''})\n{a.markdown}"
         for a in analyses if not a.error
     )
     if not blob:

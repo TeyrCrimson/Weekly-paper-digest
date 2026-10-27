@@ -31,6 +31,7 @@ class Analysis:
     markdown: str
     usage: dict
     error: str | None = None
+    low_relevance: bool = False  # below min_relevance_score; its topic's only match
 
 
 @dataclass(frozen=True)

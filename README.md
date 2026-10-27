@@ -76,7 +76,15 @@ topics:
 ```
 
 The `description` matters far more than `name`. Also check
-`arxiv_categories` covers where such papers get posted.
+`arxiv_categories` covers where such papers get posted. For a narrow topic
+outside those categories, add an `arxiv_queries` entry (raw arXiv
+`search_query`, e.g. `abs:"x" AND abs:y`) instead of a whole category: each
+query is fetched as its own stream and merged.
+
+Analysis slots are dealt round-robin across topics, so one prolific topic
+can't take all `top_n`. Every topic is guaranteed its single best match even
+below `min_relevance_score`; such digests are flagged "⚠ low" in `index.md`
+and carry a low-relevance warning, so a quiet week still surfaces something.
 
 Keep `top_n` modest (default 10): each analyzed paper is one Sonnet call,
 and subscription plans have rolling usage limits.

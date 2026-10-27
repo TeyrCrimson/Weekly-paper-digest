@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from paperdigest.models import Analysis, RankedPaper
@@ -52,3 +53,11 @@ def test_summary_written_and_linked(tmp_path):
     assert (week_dir / "SUMMARY.md").read_text().startswith("# Weekly summary")
     assert "](SUMMARY.md)" in (week_dir / "index.md").read_text()
     assert len(list(week_dir.iterdir())) == 3  # index + SUMMARY + one digest
+
+
+def test_low_relevance_is_flagged(tmp_path):
+    week_dir = render_digests(tmp_path, [replace(_analysis(0, score=3), low_relevance=True)],
+                              USAGE, RUN_TIME)
+    assert "| 3 ⚠ low |" in (week_dir / "index.md").read_text()
+    body = (week_dir / "2507.00000-cross-vendor-dds-discovery-for-ros-2-par.md").read_text()
+    assert "**Low relevance:**" in body

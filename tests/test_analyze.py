@@ -1,7 +1,7 @@
 import pytest
 
 from paperdigest import analyze, llm
-from paperdigest.config import Config
+from paperdigest.config import Config, Topic
 from paperdigest.models import LLMResult, RankedPaper
 from tests.conftest import make_paper
 
@@ -30,9 +30,8 @@ def test_analyze_papers(monkeypatch, topics):
 
     monkeypatch.setattr(llm, "complete", fake_complete)
 
-    # top_n=2: third paper never analyzed; score-4 paper filtered out
-    analyses = analyze.analyze_papers(
-        [_ranked(0, 9), _ranked(1, 4), _ranked(2, 8)], _cfg(topics))
+    # top_n=2, but the score-4 paper is below min_relevance_score
+    analyses = analyze.analyze_papers([_ranked(0, 9), _ranked(1, 4)], _cfg(topics))
 
     assert len(analyses) == 1
     assert analyses[0].markdown == "## TL;DR\ndigest body"
@@ -41,6 +40,44 @@ def test_analyze_papers(monkeypatch, topics):
     assert model == "sonnet"
     assert system == analyze.ANALYSIS_SYSTEM_PROMPT
     assert "extracted paper text" in prompt
+
+
+def test_select_for_analysis_spreads_across_topics():
+    def rp(i, score, topic):
+        return RankedPaper(paper=make_paper(i), score=score, matched_topics=[topic], one_liner="")
+    busy = [rp(i, 10, "busy") for i in range(5)]
+    narrow = rp(5, 7, "narrow")
+    noise = rp(6, 9, "unmatched")
+    low = rp(7, 5, "narrow")
+
+    picked = analyze.select_for_analysis([*busy, noise, narrow, low], ["busy", "narrow"], 3, 6)
+    assert picked == [busy[0], busy[1], narrow]  # narrow's 7 beats busy's third 10
+
+    # narrow runs dry: leftover slots go to busy, then to unmatched by score
+    picked = analyze.select_for_analysis([*busy[:2], noise, narrow], ["busy", "narrow"], 4, 6)
+    assert picked == [busy[0], busy[1], noise, narrow]
+
+
+def test_low_scoring_paper_is_topics_guaranteed_slot():
+    def rp(i, score, topic):
+        return RankedPaper(paper=make_paper(i), score=score, matched_topics=[topic], one_liner="")
+    busy = [rp(i, 10, "busy") for i in range(3)]
+    sparse, unmatched = rp(3, 2, "sparse"), rp(4, 1, "other")
+    picked = analyze.select_for_analysis([*busy, sparse, unmatched], ["busy", "sparse"], 3, 6)
+    assert picked == [busy[0], busy[1], sparse]  # unmatched low paper never guaranteed
+
+
+def test_analyze_flags_low_relevance(monkeypatch, topics):
+    monkeypatch.setattr(analyze, "_download_pdf", lambda url: b"%PDF-fake")
+    monkeypatch.setattr(analyze, "_extract_text", lambda b: "text")
+    monkeypatch.setattr(llm, "complete", lambda p, s, m: LLMResult(text="body", usage={}))
+    analyses = analyze.analyze_papers([_ranked(0, 9), _ranked(1, 3)],
+                                      _cfg([topics[0], Topic("other", "x")]))
+    assert [a.low_relevance for a in analyses] == [False]  # topic already filled
+
+    low = RankedPaper(paper=make_paper(2), score=3, matched_topics=["other"], one_liner="")
+    analyses = analyze.analyze_papers([_ranked(0, 9), low], _cfg([topics[0], Topic("other", "x")]))
+    assert [a.low_relevance for a in analyses] == [False, True]
 
 
 def test_pdf_failure_gives_stub(monkeypatch, topics):

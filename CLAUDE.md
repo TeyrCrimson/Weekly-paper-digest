@@ -87,10 +87,14 @@ topics:
       measurement fusion, Kalman rewind/replay.
 
 arxiv_categories: [cs.RO, eess.SY, cs.LG]
+arxiv_queries:             # optional: raw arXiv search_query strings, each
+  - 'abs:"prompt injection" AND abs:pdf'   # its own capped stream, merged
 lookback_days: 7
 max_candidates: 200        # hard cap on fetched papers
 top_n: 10                  # papers that get full analysis
-min_relevance_score: 6     # skip analysis below this even if in top_n
+min_relevance_score: 6     # gate for top_n slots, which go round-robin
+                           # across topics; each topic's single best match
+                           # bypasses it and is flagged low-relevance
 
 ranking_model: haiku       # Claude Code --model alias
 analysis_model: sonnet

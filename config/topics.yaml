@@ -25,6 +25,20 @@ topics:
       metrics that actually measure scale drift over a trajectory rather
       than only per-frame relative error.
 
+  - name: "Document-borne prompt injection"
+    description: >
+      Prompt injection carried inside documents and files that an LLM
+      pipeline ingests: PDFs, résumés, office files and other structured
+      inputs whose instructions are hidden from the human reader (invisible,
+      off-page or white-on-white text, metadata, font and glyph tricks,
+      encoded or steganographic payloads) or that survive parsing, text
+      extraction, OCR and flattening. Includes whether content disarm and
+      reconstruction (CDR), sanitization or render-based defenses actually
+      remove such payloads, detectors evaluated on real documents, and
+      measurements of in-the-wild prevalence. NOT generic jailbreaks,
+      chat-only prompt injection, or agent tool-call hijacking with no
+      document, file or parser angle.
+
   # Parked 2026-09-13: cs.CV + cs.RO already fill the fetch budget for a
   # 7-day window, so these can't ride along without silently truncating the
   # lookback. Uncomment together with cs.LG/cs.CL below.
@@ -47,6 +61,18 @@ topics:
   #     schedulers, and algorithm-hardware co-design for the decode path.
 
 arxiv_categories: [cs.CV, cs.RO]
+# Each query is its own fetch stream with its own max_candidates cap, so
+# narrow topics outside arxiv_categories ride along without truncating the
+# category feed. Plain "prompt injection" would flood the digest; this
+# AND-clause measured 3 papers/7d and 13/30d on 2026-10-27 and matches
+# 2605.28999, 2606.08403 and 2607.19396. No cat: filter, since these land
+# in cs.CR, cs.AI and cs.CL alike.
+arxiv_queries:
+  - >-
+    abs:"prompt injection" AND (abs:pdf OR abs:pdfs OR abs:document OR
+    abs:documents OR abs:parser OR abs:parsing OR abs:resume OR abs:resumes
+    OR abs:hidden OR abs:steganographic OR abs:"content disarm" OR abs:CDR
+    OR abs:OCR OR abs:"structured input")
 lookback_days: 7
 max_candidates: 2000
 top_n: 12

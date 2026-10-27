@@ -1,7 +1,7 @@
 """Load and validate config/topics.yaml. Raises ValueError on anything malformed."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -23,13 +23,19 @@ class Config:
     min_relevance_score: int
     ranking_model: str
     analysis_model: str
+    # Raw arXiv search_query strings, each fetched as its own stream so a narrow
+    # topic outside arxiv_categories isn't drowned by the category feed's cap.
+    arxiv_queries: list[str] = field(default_factory=list)
+
+
+OPTIONAL_KEYS = {"arxiv_queries"}
 
 
 def load_config(path: str | Path) -> Config:
     raw = yaml.safe_load(Path(path).read_text())
     if not isinstance(raw, dict):
         raise ValueError(f"{path}: config must be a mapping")
-    missing = {f.name for f in Config.__dataclass_fields__.values()} - raw.keys()
+    missing = set(Config.__dataclass_fields__) - OPTIONAL_KEYS - raw.keys()
     if missing:
         raise ValueError(f"{path}: missing config keys: {sorted(missing)}")
     cfg = Config(
@@ -41,6 +47,7 @@ def load_config(path: str | Path) -> Config:
         min_relevance_score=_require_int(raw, "min_relevance_score", 0, 10),
         ranking_model=_require_str(raw, "ranking_model"),
         analysis_model=_require_str(raw, "analysis_model"),
+        arxiv_queries=_require_str_list(raw, "arxiv_queries") if "arxiv_queries" in raw else [],
     )
     return cfg
 
