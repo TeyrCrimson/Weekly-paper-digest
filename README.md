@@ -93,7 +93,7 @@ and subscription plans have rolling usage limits.
 
 ```
 config/topics.yaml
-  → fetch.py    arXiv API, last lookback_days, ≤ max_candidates papers
+  → fetch.py    arXiv API, last announced lookback_days batch, ≤ max_candidates papers
   → rank.py     one batched Haiku call scores relevance 0–10 vs topics
   → analyze.py  top_n papers ≥ min_relevance_score: PDF → text → one Sonnet call
   → render.py   digests/YYYY-Www/: one .md per paper + index.md + SUMMARY.md

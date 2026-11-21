@@ -6,6 +6,7 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -23,49 +24,95 @@ REQUEST_GAP_S = 3  # arXiv rate guidance: 1 request / 3 s
 RETRY_BACKOFF_S = (30, 120, 300, 900)
 RETRYABLE_STATUS = {429, 503}  # throttled / overloaded; anything else is our bug
 ATOM = {"atom": "http://www.w3.org/2005/Atom"}
+# arXiv's weekly batch boundary: Fri 14:00 ET submissions close, announced
+# Sun 20:00 ET (info.arxiv.org/help/availability.html). Windows end on this
+# boundary so a Monday run never searches submissions not yet announced.
+ET = ZoneInfo("America/New_York")
+FRIDAY = 4
 
 
-def fetch_papers(cfg: Config) -> list[Paper]:
-    """Papers submitted in the last `lookback_days` from the category feed plus
+def batch_window(now: datetime, lookback_days: int) -> tuple[datetime, datetime]:
+    """[start, end) in UTC. end = latest Fri 14:00 ET whose Sun 20:00 ET
+    announcement has passed; start = lookback_days earlier (ET wall clock,
+    so DST shifts don't move the boundary off 14:00)."""
+    day = now.astimezone(ET).date()
+    while True:
+        if day.weekday() == FRIDAY:
+            end = datetime.combine(day, datetime.min.time().replace(hour=14), ET)
+            announced = datetime.combine(day + timedelta(days=2),
+                                         datetime.min.time().replace(hour=20), ET)
+            if announced <= now:
+                break
+        day -= timedelta(days=1)
+    start = datetime.combine(day - timedelta(days=lookback_days), end.timetz())
+    return start.astimezone(timezone.utc), end.astimezone(timezone.utc)
+
+
+def _with_window(query: str, start: datetime, end: datetime) -> str:
+    """Bound a query server-side so max_candidates only counts in-window papers.
+    arXiv's range is GMT, minute precision, inclusive: stop one minute early."""
+    fmt = "%Y%m%d%H%M"
+    last = end - timedelta(minutes=1)
+    return f"({query}) AND submittedDate:[{start:{fmt}} TO {last:{fmt}}]"
+
+
+def fetch_papers(cfg: Config, now: datetime | None = None) -> list[Paper]:
+    """Papers in the last announced `lookback_days` batch window (see
+    batch_window) from the category feed plus
     each `arxiv_queries` stream, deduped by id, newest first. Each stream is
     capped at `max_candidates` on its own, so a narrow query never loses its
     few papers to a flooded category feed."""
+    start, end = batch_window(now or datetime.now(timezone.utc), cfg.lookback_days)
+    log.info("window: %s to %s UTC", f"{start:%Y-%m-%d %H:%M}", f"{end:%Y-%m-%d %H:%M}")
     category_query = " OR ".join(f"cat:{c}" for c in cfg.arxiv_categories)
     by_id: dict[str, Paper] = {}
     for i, query in enumerate((category_query, *cfg.arxiv_queries)):
         if i:
             time.sleep(REQUEST_GAP_S)
-        for p in _fetch_stream(query, cfg):
+        for p in _fetch_stream(query, cfg, start, end):
             by_id.setdefault(p.arxiv_id, p)
     papers = sorted(by_id.values(), key=lambda p: p.published, reverse=True)
     log.info("fetched %d unique papers from %d streams", len(papers), 1 + len(cfg.arxiv_queries))
     return papers
 
 
-def _fetch_stream(query: str, cfg: Config) -> list[Paper]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=cfg.lookback_days)
+def _fetch_stream(query: str, cfg: Config, start: datetime, end: datetime) -> list[Paper]:
     papers: list[Paper] = []
-    for start in range(0, cfg.max_candidates, PAGE_SIZE):
-        if start:
+    too_new = 0  # should stay 0: the server-side range already excludes them
+    for offset in range(0, cfg.max_candidates, PAGE_SIZE):
+        if offset:
             time.sleep(REQUEST_GAP_S)
-        count = min(PAGE_SIZE, cfg.max_candidates - start)
-        page = parse_atom(_get_page(query, start, count))
+        count = min(PAGE_SIZE, cfg.max_candidates - offset)
+        page = parse_atom(_get_page(_with_window(query, start, end), offset, count))
         for p in page:
-            if p.published < cutoff:
-                log.info("%s: %d papers (hit %d-day cutoff)", query, len(papers), cfg.lookback_days)
+            if p.published >= end:
+                too_new += 1
+                continue
+            if p.published < start:
+                _log_stream(query, papers, too_new, "hit window start")
                 return papers
             papers.append(p)
         if len(page) < count:
             break
     else:
-        # Exhausted max_candidates without reaching the cutoff: the lookback
-        # window is silently truncated and older papers were never seen.
-        log.warning("%s: hit max_candidates=%d before the %d-day cutoff — oldest "
-                    "fetched is %s; raise max_candidates or narrow the query",
-                    query, cfg.max_candidates, cfg.lookback_days,
-                    papers[-1].published.date() if papers else "n/a")
-    log.info("%s: %d papers", query, len(papers))
+        _warn_truncated(query, papers, cfg)
+    _log_stream(query, papers, too_new)
     return papers
+
+
+def _warn_truncated(query: str, papers: list[Paper], cfg: Config) -> None:
+    """Exhausted max_candidates inside the window: older papers were never seen."""
+    log.warning("%s: hit max_candidates=%d before the %d-day window start — oldest "
+                "fetched is %s; raise max_candidates or narrow the query",
+                query, cfg.max_candidates, cfg.lookback_days,
+                papers[-1].published.date() if papers else "n/a")
+
+
+def _log_stream(query: str, papers: list[Paper], too_new: int, note: str = "") -> None:
+    log.info("%s: %d papers%s", query, len(papers), f" ({note})" if note else "")
+    if too_new:
+        log.warning("%s: dropped %d papers published after the window end; "
+                    "submittedDate and <published> disagree", query, too_new)
 
 
 def _get_page(query: str, start: int, count: int) -> str:

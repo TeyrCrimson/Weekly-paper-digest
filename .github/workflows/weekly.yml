@@ -2,7 +2,7 @@ name: weekly-digest
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # Mondays 06:00 UTC; cron can drift — lookback_days absorbs it
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC; drift is fine — the window is pinned to arXiv's Fri 14:00 ET batch (fetch.batch_window)
   workflow_dispatch:
 
 permissions:
