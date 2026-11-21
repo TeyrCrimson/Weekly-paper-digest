@@ -95,14 +95,17 @@ def _fetch_stream(query: str, cfg: Config, start: datetime, end: datetime) -> li
         if len(page) < count:
             break
     else:
-        # Exhausted max_candidates without reaching the cutoff: the lookback
-        # window is silently truncated and older papers were never seen.
-        log.warning("%s: hit max_candidates=%d before the %d-day cutoff — oldest "
-                    "fetched is %s; raise max_candidates or narrow the query",
-                    query, cfg.max_candidates, cfg.lookback_days,
-                    papers[-1].published.date() if papers else "n/a")
+        _warn_truncated(query, papers, cfg)
     _log_stream(query, papers, too_new)
     return papers
+
+
+def _warn_truncated(query: str, papers: list[Paper], cfg: Config) -> None:
+    """Exhausted max_candidates inside the window: older papers were never seen."""
+    log.warning("%s: hit max_candidates=%d before the %d-day window start — oldest "
+                "fetched is %s; raise max_candidates or narrow the query",
+                query, cfg.max_candidates, cfg.lookback_days,
+                papers[-1].published.date() if papers else "n/a")
 
 
 def _log_stream(query: str, papers: list[Paper], too_new: int, note: str = "") -> None:
