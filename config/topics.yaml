@@ -73,6 +73,7 @@ arxiv_queries:
     abs:documents OR abs:parser OR abs:parsing OR abs:resume OR abs:resumes
     OR abs:hidden OR abs:steganographic OR abs:"content disarm" OR abs:CDR
     OR abs:OCR OR abs:"structured input")
+# Window length, ending on the latest announced Fri 14:00 ET arXiv batch.
 lookback_days: 7
 max_candidates: 2000
 top_n: 12

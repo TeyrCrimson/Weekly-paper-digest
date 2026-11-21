@@ -19,7 +19,8 @@ Repo: https://github.com/TeyrCrimson/Weekly-paper-digest
 ```
 config/topics.yaml
         │
-  [1] fetch.py    — arXiv API: papers from last `lookback_days` in configured categories
+  [1] fetch.py    — arXiv API: papers from the last announced `lookback_days` batch window
+                    (ends on arXiv's Fri 14:00 ET boundary) in configured categories
         │
   [2] rank.py     — one cheap LLM call (Haiku) scores relevance 0–10 per paper vs topics
         │
@@ -153,8 +154,10 @@ Idempotent: re-running a week overwrites that week's folder.
   for the run step. Generated once locally with `claude setup-token`
   (requires Pro/Max/Team/Enterprise; token lasts ~1 year — put an expiry
   reminder in the README). Never commit it; never set ANTHROPIC_API_KEY.
-- Note: GitHub cron can drift/skip under load — the run must tolerate a
-  `lookback_days` window rather than assume exactly-7-days gaps.
+- Note: GitHub cron can drift/skip under load. The window is pinned to arXiv's
+  Fri 14:00 ET batch boundary (fetch.batch_window), not to run time, so any
+  run between Sun 20:00 ET and the next Sun 20:00 ET covers the same batch.
+  A skipped week is still lost; re-run it with workflow_dispatch that week.
 
 ## Local dev
 
